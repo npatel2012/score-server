@@ -1,0 +1,58 @@
+package com.redhatkeynote.score
+
+import function com.redhatkeynote.score.ScoreServer.server
+import java.util.List
+
+rule "init game"
+        salience 100
+    when
+    then
+        server().init(kcontext);
+end
+
+rule "load and merge player"
+        salience 80
+    when
+        player : Player(id == null)
+    then
+        Player p = server().loadPlayer(player);
+        update(player__Handle__, p);
+end
+
+rule "Create achievement if it does not exist"
+        salience -3
+    when
+        pach   : PlayerAchievement( )
+        not( Achievement( type == pach.type ) from server().loadAchievements() )
+    then
+        server().createAchievement( pach.getType(), pach.getAchievement() );
+        update( pach );
+end
+
+rule "process achievement"
+        salience -5
+    when
+        pach   : PlayerAchievement( )
+        ach    : Achievement( type == pach.type ) from server().loadAchievements()
+        player : Player( uuid == pach.uuid, !hasAchievement(ach) )
+        na     : AchievementList()
+    then
+        player.addAchievement( ach );
+        na.addAchievement( ach );
+end
+
+rule "submit player score"
+        salience -10
+    when
+        player : Player()
+    then
+        server().savePlayer(player);
+end
+
+
+rule "delete players"
+    when
+        deletePlayers : DeletePlayers()
+    then
+        server().deletePlayers();
+end
